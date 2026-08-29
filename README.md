@@ -9,7 +9,7 @@ Telegram Mini App
        │ HTTPS
        ▼
 Cloudflare Tunnel
-       │ http://127.0.0.1:8000
+       │ http://127.0.0.1:8750
        ▼
 main.py ─────── фронтенд: index.html, styles.css, app.js
        │
@@ -36,19 +36,23 @@ pip install -r requirements.txt
 DEV_USER_ID=1 python main.py
 ```
 
-Открыть `http://127.0.0.1:8000`. `DEV_USER_ID` используется только локально, чтобы запускать приложение без Telegram.
+Открыть `http://127.0.0.1:8750`. `DEV_USER_ID` используется только локально, чтобы запускать приложение без Telegram.
 
 ## Запуск на VPS
 
+После однократной установки зависимостей сервер запускается в фоне привычным способом:
+
 ```sh
-source .venv/bin/activate
-BOT_TOKEN=токен_из_BotFather gunicorn --bind 127.0.0.1:8000 main:app
+export BOT_TOKEN=токен_из_BotFather
+nohup .venv/bin/python main.py &
+nohup cloudflared tunnel --url http://localhost:8750 &
+tail -n 50 nohup.out
 ```
 
-В Cloudflare Tunnel нужно связать публичный hostname с `http://localhost:8000`. Полученный HTTPS-адрес указывается в BotFather как URL Mini App. Nginx для этой схемы не нужен.
+Скопировать из вывода адрес `https://….trycloudflare.com` и указать его в BotFather как URL Mini App. Nginx для этой схемы не нужен.
 
 По умолчанию база создаётся рядом с проектом. Другой путь задаётся переменной `DATABASE_PATH`:
 
 ```sh
-DATABASE_PATH=/var/lib/dayvision/dayvision.sqlite BOT_TOKEN=... gunicorn --bind 127.0.0.1:8000 main:app
+export DATABASE_PATH=/var/lib/dayvision/dayvision.sqlite
 ```

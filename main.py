@@ -123,4 +123,4 @@ def save_palette():
 
 
 if __name__ == "__main__":
-    app.run(host=os.getenv("HOST", "127.0.0.1"), port=int(os.getenv("PORT", "8000")), debug=False)
+    app.run(host=os.getenv("HOST", "127.0.0.1"), port=int(os.getenv("PORT", "8750")), debug=False)
