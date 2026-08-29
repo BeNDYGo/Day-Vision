@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f2ede2">
+  <title>DayVision</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
+</head>
+<body>
+  <main class="app">
+    <header class="month-header">
+      <button id="previous-month" class="month-button" type="button" aria-label="Предыдущий месяц">‹</button>
+      <h1 id="month-title"></h1>
+      <button id="next-month" class="month-button" type="button" aria-label="Следующий месяц">›</button>
+    </header>
+
+    <section class="workspace">
+      <div class="calendar" id="calendar" aria-label="Календарь"></div>
+
+      <article class="entry">
+        <time id="entry-date"></time>
+
+        <div class="toolbar" aria-label="Форматирование">
+          <button type="button" data-format="strong" aria-label="Жирный"><b>B</b></button>
+          <button type="button" data-format="em" aria-label="Курсив"><i>I</i></button>
+          <button type="button" data-format="h3" aria-label="Заголовок">H</button>
+          <button type="button" data-format="ul" aria-label="Список">≡</button>
+          <button type="button" data-format="blockquote" aria-label="Цитата">“</button>
+        </div>
+
+        <div id="editor" class="editor" contenteditable="true" role="textbox" aria-label="Запись за день" aria-multiline="true"></div>
+
+        <div id="photos" class="photos"></div>
+        <label class="add-photo">
+          <input id="photo-input" type="file" accept="image/*" multiple>
+          <span>+ Фото</span>
+        </label>
+
+        <div id="tags" class="tags"></div>
+        <input id="tag-input" class="tag-input" type="text" placeholder="+ хештег" aria-label="Добавить хештег">
+
+        <div class="palette-row">
+          <div id="palette" class="palette" aria-label="Цвет дня"></div>
+          <label class="palette-action" aria-label="Добавить свой цвет">+
+            <input id="color-input" type="color" value="#b8c8e8">
+          </label>
+          <button id="delete-color" class="palette-action" type="button" aria-label="Удалить цвет" aria-pressed="false">−</button>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
