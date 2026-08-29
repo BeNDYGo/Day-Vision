@@ -1,52 +1,21 @@
-import hashlib
-import hmac
-import json
 import os
 import re
 import time
-from pathlib import Path
-from urllib.parse import parse_qsl
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request
 
 import database
 
 
-ROOT = Path(__file__).parent
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-DEV_USER_ID = os.getenv("DEV_USER_ID")
 HEX_COLOR = re.compile(r"^#[0-9a-f]{6}$", re.IGNORECASE)
 IMAGE = re.compile(r"^data:image/(?:png|jpeg|webp|gif);base64,", re.IGNORECASE)
 DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MONTH = re.compile(r"^\d{4}-\d{2}$")
-STATIC_FILES = {"app.js", "styles.css"}
+USER_ID = 1
 
 app = Flask(__name__, static_folder=None)
 app.config["MAX_CONTENT_LENGTH"] = 8_000_000
 database.initialize()
-
-
-def telegram_user_id():
-    if DEV_USER_ID:
-        return int(DEV_USER_ID)
-    if not BOT_TOKEN:
-        raise ValueError("BOT_TOKEN is not configured")
-
-    authorization = request.headers.get("Authorization", "")
-    raw = authorization[4:] if authorization.startswith("tma ") else ""
-    values = dict(parse_qsl(raw, keep_blank_values=True))
-    received_hash = values.pop("hash", "")
-    data_check = "\n".join(f"{key}={values[key]}" for key in sorted(values))
-    secret = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
-    expected_hash = hmac.new(secret, data_check.encode(), hashlib.sha256).hexdigest()
-    if not received_hash or not hmac.compare_digest(received_hash, expected_hash):
-        raise PermissionError("Invalid Telegram signature")
-    if abs(time.time() - int(values.get("auth_date", 0))) > 86400:
-        raise PermissionError("Expired Telegram session")
-    user = json.loads(values.get("user", "null"))
-    if not isinstance(user, dict) or not isinstance(user.get("id"), int):
-        raise PermissionError("Missing Telegram user")
-    return user["id"]
 
 
 def valid_entry(value):
@@ -70,21 +39,12 @@ def bad_request(error):
     return jsonify(error=str(error)), 400
 
 
-@app.errorhandler(PermissionError)
-def unauthorized(error):
-    return jsonify(error=str(error)), 401
-
-
-@app.get("/")
-def index():
-    return send_from_directory(ROOT, "index.html")
-
-
-@app.get("/<path:name>")
-def static_file(name):
-    if name not in STATIC_FILES:
-        return jsonify(error="Not found"), 404
-    return send_from_directory(ROOT, name)
+@app.after_request
+def cors(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Methods"] = "GET, PUT, OPTIONS"
+    return response
 
 
 @app.get("/api/health")
@@ -96,7 +56,7 @@ def health():
 def month(month):
     if not MONTH.fullmatch(month):
         raise ValueError("Invalid month")
-    return jsonify(database.get_month(telegram_user_id(), month))
+    return jsonify(database.get_month(USER_ID, month))
 
 
 @app.put("/api/entries/<day>")
@@ -104,13 +64,13 @@ def entry(day):
     if not DAY.fullmatch(day):
         raise ValueError("Invalid day")
     value = valid_entry(request.get_json())
-    database.save_entry(telegram_user_id(), day, value, int(time.time() * 1000))
+    database.save_entry(USER_ID, day, value, int(time.time() * 1000))
     return jsonify(value)
 
 
 @app.get("/api/palette")
 def get_palette():
-    return jsonify(database.get_palette(telegram_user_id()))
+    return jsonify(database.get_palette(USER_ID))
 
 
 @app.put("/api/palette")
@@ -118,7 +78,7 @@ def save_palette():
     colors = request.get_json()
     if not isinstance(colors, list) or len(colors) > 32 or any(not isinstance(color, str) or not HEX_COLOR.fullmatch(color) for color in colors):
         raise ValueError("Invalid palette")
-    database.save_palette(telegram_user_id(), colors)
+    database.save_palette(USER_ID, colors)
     return jsonify(colors)
 
 

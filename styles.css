@@ -12,6 +12,7 @@
 body {
   margin: 0;
   min-width: 320px;
+  overflow-x: hidden;
   background: var(--background);
   color: var(--text);
   font-family: Inter, system-ui, sans-serif;
@@ -21,7 +22,7 @@ button, input { font: inherit; }
 button { color: inherit; }
 
 .app {
-  width: min(860px, 100%);
+  width: min(1100px, 100%);
   margin: 0 auto;
   padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
 }
@@ -50,13 +51,14 @@ h1 {
 
 .workspace {
   display: grid;
-  grid-template-columns: 1.05fr .95fr;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
   gap: 18px;
 }
 
 .calendar {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  min-width: 0;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 7px;
   align-content: start;
 }
@@ -89,6 +91,7 @@ h1 {
   padding: 16px;
   border-radius: 16px;
   background: var(--surface);
+  min-width: 0;
 }
 
 #entry-date { color: var(--muted); font-size: 12px; }
@@ -154,8 +157,11 @@ h1 {
 .palette-action[aria-pressed="true"] { background: var(--text); color: var(--surface); }
 .palette.deleting .swatch { outline: 2px dashed #b55252; outline-offset: 2px; }
 
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .app { padding-inline: 14px; }
   .workspace { grid-template-columns: 1fr; }
   .entry { min-height: 360px; }
+  h1 { font-size: clamp(24px, 8vw, 29px); }
+  .calendar { gap: 5px; }
+  .day { border-radius: 9px; font-size: 11px; }
 }

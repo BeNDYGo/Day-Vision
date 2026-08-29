@@ -1,58 +1,62 @@
 # DayVision
 
-DayVision — дневник в формате Telegram Mini App. Пользователь выбирает день в календаре, пишет форматированную заметку, добавляет фотографии, хештеги и собственный цвет дня. Изменения сохраняются автоматически.
+Личный веб-дневник: календарь, форматированные записи, фотографии, хештеги и пользовательские цвета дней. Фронтенд хранится на GitHub Pages, записи — в SQLite на VPS.
 
 ## Архитектура
 
 ```text
-Telegram Mini App
-       │ HTTPS
-       ▼
-Cloudflare Tunnel
-       │ http://127.0.0.1:8750
-       ▼
-main.py ─────── фронтенд: index.html, styles.css, app.js
-       │
-       ▼
-database.py ─── dayvision.sqlite
+GitHub Pages                 VPS
+index.html ──┐
+styles.css ──┼── HTTPS ──► Cloudflare Tunnel ──► main.py:8750 ──► database.py ──► dayvision.sqlite
+app.js ──────┘
 ```
 
-`main.py` раздаёт интерфейс, принимает API-запросы и проверяет подпись Telegram. `database.py` создаёт таблицы и читает или записывает данные в SQLite. Записи разных пользователей разделяются по Telegram ID.
+- `index.html`, `styles.css`, `app.js` — статический сайт.
+- `main.py` — принимает API-запросы с сайта; авторизации нет.
+- `database.py` — читает и перезаписывает данные в SQLite.
+- `dayvision.sqlite` — создаётся автоматически и не попадает в Git.
 
-## Файлы
+## Backend на VPS
 
-- `index.html`, `styles.css`, `app.js` — интерфейс Mini App.
-- `main.py` — HTTP API, авторизация Telegram и раздача фронтенда.
-- `database.py` — работа с SQLite.
-- `dayvision.sqlite` — база, создаётся при первом запуске и не добавляется в Git.
-- `requirements.txt` — Flask и Gunicorn.
-
-## Локальный запуск
+Один раз установить зависимости:
 
 ```sh
 python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-DEV_USER_ID=1 python main.py
+.venv/bin/pip install -r requirements.txt
 ```
 
-Открыть `http://127.0.0.1:8750`. `DEV_USER_ID` используется только локально, чтобы запускать приложение без Telegram.
-
-## Запуск на VPS
-
-После однократной установки зависимостей сервер запускается в фоне привычным способом:
+Запустить API и Cloudflare Tunnel в фоне:
 
 ```sh
-export BOT_TOKEN=токен_из_BotFather
 nohup .venv/bin/python main.py &
 nohup cloudflared tunnel --url http://localhost:8750 &
-tail -n 50 nohup.out
+tail -n 100 nohup.out
 ```
 
-Скопировать из вывода адрес `https://….trycloudflare.com` и указать его в BotFather как URL Mini App. Nginx для этой схемы не нужен.
+Из вывода скопировать адрес вида `https://example.trycloudflare.com`.
 
-По умолчанию база создаётся рядом с проектом. Другой путь задаётся переменной `DATABASE_PATH`:
+## Frontend на GitHub Pages
+
+В репозитории GitHub открыть **Settings → Pages**, выбрать публикацию из нужной ветки и корневой папки. После публикации один раз открыть сайт с адресом API:
+
+```text
+https://USER.github.io/REPOSITORY/?api=https://example.trycloudflare.com
+```
+
+Сайт запомнит адрес API в браузере. Когда адрес быстрого Cloudflare Tunnel изменится, достаточно снова открыть сайт с новым параметром `?api=`.
+
+## Локальная проверка
+
+В первом терминале:
 
 ```sh
-export DATABASE_PATH=/var/lib/dayvision/dayvision.sqlite
+nohup .venv/bin/python main.py &
 ```
+
+Во втором:
+
+```sh
+python3 -m http.server 8080
+```
+
+Открыть `http://localhost:8080`. Локально сайт автоматически обращается к `http://localhost:8750`.

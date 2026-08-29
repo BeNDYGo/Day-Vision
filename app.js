@@ -9,6 +9,10 @@ const DEFAULT_COLORS = [
   '#c9b3dc', // purple
 ];
 
+const apiParameter = new URLSearchParams(location.search).get('api');
+if (apiParameter) localStorage.setItem('dayvision-api', apiParameter.replace(/\/$/, ''));
+const API_ORIGIN = localStorage.getItem('dayvision-api') || 'http://localhost:8750';
+
 const monthNames = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
 const monthNamesGenitive = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -32,9 +36,9 @@ function dateKey(date) { return [date.getFullYear(), String(date.getMonth() + 1)
 function contrast(hex) { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 < 135 ? '#fff' : '#25221d'; }
 
 async function api(path, options = {}) {
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${API_ORIGIN}/api${path}`, {
     ...options,
-    headers: { 'content-type': 'application/json', ...(telegram?.initData && { authorization: `tma ${telegram.initData}` }), ...options.headers },
+    headers: { 'content-type': 'application/json', ...options.headers },
   });
   const value = await response.json();
   if (!response.ok) throw new Error(value.error || 'Server error');
@@ -278,13 +282,9 @@ document.querySelector('#delete-color').addEventListener('click', event => {
   renderPalette();
 });
 
-const telegram = window.Telegram?.WebApp;
-telegram?.ready();
-telegram?.expand();
-
 function showError(error) {
   console.error(error);
-  telegram?.showAlert?.(error.message) || alert(error.message);
+  alert(error.message);
 }
 
 Promise.all([loadMonth(), api('/palette').then(value => { colors = value; })]).then(() => selectDate(selected)).catch(showError);
