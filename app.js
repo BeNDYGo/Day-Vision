@@ -36,10 +36,16 @@ function dateKey(date) { return [date.getFullYear(), String(date.getMonth() + 1)
 function contrast(hex) { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 < 135 ? '#fff' : '#25221d'; }
 
 async function api(path, options = {}) {
-  const response = await fetch(`${API_ORIGIN}/api${path}`, {
-    ...options,
-    headers: { ...(options.body && { 'content-type': 'application/json' }), ...options.headers },
-  });
+  const url = `${API_ORIGIN}/api${path}`;
+  let response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers: { ...(options.body && { 'content-type': 'application/json' }), ...options.headers },
+    });
+  } catch {
+    throw new Error(`Не удалось подключиться к API: ${API_ORIGIN}`);
+  }
   const value = await response.json();
   if (!response.ok) throw new Error(value.error || 'Server error');
   return value;
@@ -287,4 +293,5 @@ function showError(error) {
   alert(error.message);
 }
 
+selectDate(selected);
 Promise.all([loadMonth(), api('/palette').then(value => { colors = value; })]).then(() => selectDate(selected)).catch(showError);
