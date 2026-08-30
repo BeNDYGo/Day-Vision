@@ -23,6 +23,7 @@ const editor = document.querySelector('#editor');
 const palette = document.querySelector('#palette');
 const photos = document.querySelector('#photos');
 const tagInput = document.querySelector('#tag-input');
+const themeButton = document.querySelector('#theme-toggle');
 let month = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let selected = new Date();
 let entry = emptyEntry();
@@ -34,6 +35,14 @@ let savedRange = null;
 function emptyEntry() { return { html: '', tags: [], color: '', photos: [] }; }
 function dateKey(date) { return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-'); }
 function contrast(hex) { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 < 135 ? '#fff' : '#25221d'; }
+
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeButton.textContent = theme === 'dark' ? '☀' : '☾';
+  themeButton.setAttribute('aria-label', theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему');
+  themeButton.setAttribute('aria-pressed', String(theme === 'dark'));
+  document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#0e171d' : '#f2ede2';
+}
 
 async function api(path, options = {}) {
   const url = `${API_ORIGIN}/api${path}`;
@@ -286,6 +295,13 @@ document.querySelector('#delete-color').addEventListener('click', event => {
   deleteColors = !deleteColors;
   event.currentTarget.setAttribute('aria-pressed', String(deleteColors));
   renderPalette();
+});
+
+setTheme(localStorage.getItem('dayvision-theme') || 'dark');
+themeButton.addEventListener('click', () => {
+  const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('dayvision-theme', theme);
+  setTheme(theme);
 });
 
 function showError(error) {

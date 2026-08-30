@@ -1,13 +1,26 @@
 :root {
-  color-scheme: light dark;
-  --background: var(--tg-theme-bg-color, #f2ede2);
-  --surface: var(--tg-theme-secondary-bg-color, #fffaf1);
-  --text: var(--tg-theme-text-color, #23211c);
-  --muted: var(--tg-theme-hint-color, #817c72);
+  color-scheme: light;
+  --background: #f2ede2;
+  --surface: #fffaf1;
+  --text: #23211c;
+  --muted: #817c72;
+  --day: #e4dfd5;
+  --selection: #6b9182;
   --border: color-mix(in srgb, var(--text) 14%, transparent);
 }
 
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0e171d;
+  --surface: #19242c;
+  --text: #eef2f1;
+  --muted: #a7b4bd;
+  --day: #26323b;
+  --selection: #527c6d;
+}
+
 * { box-sizing: border-box; }
+::selection { background: var(--selection); color: #fff; }
 
 body {
   margin: 0;
@@ -28,6 +41,7 @@ button { color: inherit; }
 }
 
 .month-header {
+  position: relative;
   display: grid;
   grid-template-columns: 42px 1fr 42px;
   align-items: center;
@@ -41,13 +55,22 @@ h1 {
   text-transform: capitalize;
 }
 
-.month-button, .toolbar button, .palette-action {
+.month-button, .theme-toggle, .toolbar button, .palette-action {
   border: 0;
   background: transparent;
   cursor: pointer;
 }
 
 .month-button { font-size: 30px; opacity: .55; }
+.theme-toggle {
+  position: absolute;
+  right: 48px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--surface);
+  font-size: 17px;
+}
 
 .workspace {
   display: grid;
@@ -74,7 +97,7 @@ h1 {
   border: 0;
   border-radius: 11px;
   aspect-ratio: 1;
-  background: color-mix(in srgb, var(--text) 7%, transparent);
+  background: var(--day);
   color: var(--text);
   cursor: pointer;
   font-size: 12px;
