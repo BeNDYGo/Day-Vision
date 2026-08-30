@@ -38,7 +38,7 @@ function contrast(hex) { const n = parseInt(hex.slice(1), 16); return ((n >> 16)
 async function api(path, options = {}) {
   const response = await fetch(`${API_ORIGIN}/api${path}`, {
     ...options,
-    headers: { 'content-type': 'application/json', ...options.headers },
+    headers: { ...(options.body && { 'content-type': 'application/json' }), ...options.headers },
   });
   const value = await response.json();
   if (!response.ok) throw new Error(value.error || 'Server error');

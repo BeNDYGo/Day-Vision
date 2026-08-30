@@ -43,7 +43,7 @@ tail -n 100 nohup.out
 https://USER.github.io/REPOSITORY/?api=https://example.trycloudflare.com
 ```
 
-Сайт запомнит адрес API в браузере. Когда адрес быстрого Cloudflare Tunnel изменится, достаточно снова открыть сайт с новым параметром `?api=`.
+Сайт запомнит адрес API в текущем браузере. В другом браузере ссылку с `?api=` нужно открыть ещё раз. Когда адрес быстрого Cloudflare Tunnel изменится, достаточно снова открыть сайт с новым параметром.
 
 ## Локальная проверка
 
@@ -59,4 +59,4 @@ nohup .venv/bin/python main.py &
 python3 -m http.server 8080
 ```
 
-Открыть `http://localhost:8080`. Локально сайт автоматически обращается к `http://localhost:8750`.
+Открыть `http://localhost:8080`. Без параметра `?api=` локальный сайт обращается к `http://localhost:8750`.
