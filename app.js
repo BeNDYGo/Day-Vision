@@ -24,6 +24,8 @@ const palette = document.querySelector('#palette');
 const photos = document.querySelector('#photos');
 const tagInput = document.querySelector('#tag-input');
 const themeButton = document.querySelector('#theme-toggle');
+const photoViewer = document.querySelector('#photo-viewer');
+const photoViewerImage = document.querySelector('#photo-viewer-image');
 let month = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let selected = new Date();
 let entry = emptyEntry();
@@ -31,6 +33,9 @@ let entries = {};
 let colors = DEFAULT_COLORS;
 let deleteColors = false;
 let savedRange = null;
+const pendingSaves = new Map();
+let latestSave = null;
+let saving = false;
 
 function emptyEntry() { return { html: '', tags: [], color: '', photos: [] }; }
 function dateKey(date) { return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-'); }
@@ -65,10 +70,30 @@ async function loadMonth() {
   entries = await api(`/month/${key}`);
 }
 
-async function saveEntry() {
+function saveEntry() {
   entry.html = sanitizeHtml(entry.html);
-  entries[dateKey(selected)] = structuredClone(entry);
-  await api(`/entries/${dateKey(selected)}`, { method: 'PUT', body: JSON.stringify(entry) });
+  const item = { day: dateKey(selected), value: structuredClone(entry) };
+  entries[item.day] = item.value;
+  latestSave = item;
+  pendingSaves.set(item.day, item);
+  drainSaves();
+}
+
+async function drainSaves() {
+  if (saving) return;
+  saving = true;
+  while (pendingSaves.size) {
+    const item = pendingSaves.values().next().value;
+    pendingSaves.delete(item.day);
+    try {
+      await api(`/entries/${item.day}`, { method: 'PUT', body: JSON.stringify(item.value) });
+    } catch (error) {
+      if (!pendingSaves.has(item.day)) pendingSaves.set(item.day, item);
+      showError(error);
+      break;
+    }
+  }
+  saving = false;
 }
 
 async function selectDate(date) {
@@ -115,17 +140,17 @@ function renderPalette() {
     button.style.background = color;
     button.setAttribute('aria-label', `Цвет ${color}`);
     button.setAttribute('aria-pressed', String(entry.color === color));
-    button.addEventListener('click', async () => {
+    button.addEventListener('click', () => {
       if (deleteColors) {
         colors = colors.filter(value => value !== color);
-        await api('/palette', { method: 'PUT', body: JSON.stringify(colors) });
         renderPalette();
+        api('/palette', { method: 'PUT', body: JSON.stringify(colors) }).catch(showError);
         return;
       }
       entry.color = color;
-      await saveEntry();
       renderPalette();
       renderCalendar();
+      saveEntry();
     });
     palette.append(button);
   });
@@ -144,10 +169,10 @@ function renderTags() {
     remove.type = 'button';
     remove.textContent = '×';
     remove.setAttribute('aria-label', `Удалить #${tag}`);
-    remove.addEventListener('click', async () => {
+    remove.addEventListener('click', () => {
       entry.tags.splice(index, 1);
-      await saveEntry();
       renderTags();
+      saveEntry();
     });
     chip.append(remove);
     container.append(chip);
@@ -159,17 +184,26 @@ function renderPhotos() {
   entry.photos.forEach((src, index) => {
     const frame = document.createElement('div');
     frame.className = 'photo';
-    frame.innerHTML = `<img src="${src}" alt="Фотография за день">`;
+    const open = document.createElement('button');
+    open.className = 'photo-open';
+    open.type = 'button';
+    open.setAttribute('aria-label', 'Открыть фотографию');
+    open.innerHTML = `<img src="${src}" alt="Фотография за день">`;
+    open.addEventListener('click', () => {
+      photoViewerImage.src = src;
+      photoViewer.showModal();
+    });
     const remove = document.createElement('button');
     remove.className = 'remove-photo';
     remove.type = 'button';
     remove.textContent = '×';
     remove.setAttribute('aria-label', 'Удалить фотографию');
-    remove.addEventListener('click', async () => {
+    remove.addEventListener('click', () => {
       entry.photos.splice(index, 1);
-      await saveEntry();
       renderPhotos();
+      saveEntry();
     });
+    frame.append(open);
     frame.append(remove);
     photos.append(frame);
   });
@@ -240,9 +274,9 @@ function toggleBlock(tag) {
   updateEntryText();
 }
 
-async function updateEntryText() {
+function updateEntryText() {
   entry.html = editor.innerHTML;
-  await saveEntry();
+  saveEntry();
 }
 
 function sanitizeHtml(html) {
@@ -268,20 +302,27 @@ editor.addEventListener('input', updateEntryText);
 document.addEventListener('selectionchange', () => { const selection = getSelection(); if (selection.rangeCount && insideEditor(selection.anchorNode)) { savedRange = selection.getRangeAt(0).cloneRange(); updateToolbar(selection.anchorNode); } });
 document.querySelectorAll('[data-format]').forEach(button => button.addEventListener('mousedown', event => { event.preventDefault(); ['strong', 'em'].includes(button.dataset.format) ? toggleInline(button.dataset.format) : toggleBlock(button.dataset.format); }));
 
-tagInput.addEventListener('keydown', async event => {
-  if (event.key !== 'Enter' || !tagInput.value.trim()) return;
+function addTag() {
+  if (!tagInput.value.trim()) return;
   entry.tags.push(tagInput.value.trim().replace(/^#/, ''));
   tagInput.value = '';
-  await saveEntry();
   renderTags();
+  saveEntry();
+}
+
+tagInput.addEventListener('keydown', event => {
+  if (event.key !== 'Enter' || event.isComposing) return;
+  event.preventDefault();
+  addTag();
 });
+tagInput.addEventListener('change', addTag);
 
 document.querySelector('#photo-input').addEventListener('change', async event => {
   const files = [...event.target.files];
   entry.photos.push(...await Promise.all(files.map(file => new Promise(resolve => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); }))));
   event.target.value = '';
-  await saveEntry();
   renderPhotos();
+  saveEntry();
 });
 
 document.querySelector('#color-input').addEventListener('change', event => {
@@ -302,6 +343,21 @@ themeButton.addEventListener('click', () => {
   const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   localStorage.setItem('dayvision-theme', theme);
   setTheme(theme);
+});
+
+document.querySelector('#close-photo-viewer').addEventListener('click', () => photoViewer.close());
+photoViewer.addEventListener('click', event => { if (event.target === photoViewer) photoViewer.close(); });
+photoViewer.addEventListener('close', () => { photoViewerImage.removeAttribute('src'); });
+
+window.addEventListener('pagehide', () => {
+  if (!latestSave) return;
+  // ponytail: keepalive is best-effort; large photo payloads still need the normal save queue to finish.
+  fetch(`${API_ORIGIN}/api/entries/${latestSave.day}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(latestSave.value),
+    keepalive: true,
+  }).catch(() => {});
 });
 
 function showError(error) {
